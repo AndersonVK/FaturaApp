@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/faturaapp/',
+  base: '/FaturaApp/',
   plugins: [
     react(),
     tailwindcss(),
@@ -13,12 +13,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        id: '/faturaapp/',
+        id: '/FaturaApp/',
         name: 'FaturaApp - Controle de Faturas',
         short_name: 'FaturaApp',
         description: 'Controle pessoal de faturas de cartão de crédito por pessoa/empresa',
-        start_url: '/faturaapp/',
-        scope: '/faturaapp/',
+        start_url: '/FaturaApp/',
+        scope: '/FaturaApp/',
         display: 'standalone',
         background_color: '#0f172a',
         theme_color: '#0f172a',
