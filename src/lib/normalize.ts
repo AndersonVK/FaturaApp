@@ -44,11 +44,17 @@ export function normalizarEstabelecimento(nomeBruto: string): string {
     .trim();
 }
 
-const TAMANHO_CHAVE = 12;
-
-/** Chave curta usada para indexação/matching, tolerante a truncamento de nomes. */
+/**
+ * Chave usada para indexação/matching exato no dicionário (por cartão ou
+ * global). Propositalmente NÃO trunca por um tamanho fixo: plataformas como
+ * "MERCADOLIVRE" ou "AMAZON BR" são prefixos compartilhados por dezenas de
+ * compras completamente diferentes (pessoas/projetos diferentes a cada vez),
+ * então um corte por tamanho colidiria tudo numa única entrada errada. A
+ * tolerância a truncamento do Itaú (quando há parcela) fica só para o
+ * matching de continuação de parcelamento, via `estabelecimentosCorrespondem`.
+ */
 export function chaveEstabelecimento(nomeNormalizado: string): string {
-  return nomeNormalizado.slice(0, TAMANHO_CHAVE);
+  return nomeNormalizado;
 }
 
 /** Compara dois nomes normalizados considerando que um pode ser prefixo truncado do outro. */
