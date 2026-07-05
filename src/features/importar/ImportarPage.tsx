@@ -7,6 +7,8 @@ import { mesReferencia as calcularMesReferencia } from '../../lib/datas';
 import { parseFaturaItauPDF, type FaturaExtraida, type BlocoFinal } from '../../lib/parser-itau';
 import { classificarBloco, type LancamentoClassificado } from '../../lib/classificacao/classificar';
 import { confirmarImportacaoFatura, type LancamentoParaConfirmar } from '../../lib/classificacao/persistencia';
+import { parseCSVClassificacao, lerArquivoCSV } from '../../lib/importacao-csv/parseCSVClassificacao';
+import { extrairProjetosNovos, casarLancamentosComCSV } from '../../lib/importacao-csv/casarComCSV';
 import type { LancamentoManual, OrigemClassificacao } from '../../db/types';
 
 interface LinhaConferencia {
@@ -17,6 +19,7 @@ interface LinhaConferencia {
   pessoaIdAtual?: string;
   projetoIdAtual?: string;
   descricaoAtual?: string;
+  origemPlanilha?: boolean;
 }
 
 const ROTULO_ORIGEM: Record<OrigemClassificacao, string> = {
@@ -127,6 +130,8 @@ export function ImportarPage() {
   const [manuaisSemMatch, setManuaisSemMatch] = useState<LancamentoManual[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [concluido, setConcluido] = useState(false);
+  const [arquivoCSV, setArquivoCSV] = useState<File | null>(null);
+  const [avisosPlanilha, setAvisosPlanilha] = useState<string[]>([]);
 
   function nomePessoa(id?: string) {
     if (!id) return null;
@@ -166,6 +171,7 @@ export function ImportarPage() {
   async function classificar() {
     if (!extraido) return;
     setCarregando(true);
+    setAvisosPlanilha([]);
     const todasLinhas: LinhaConferencia[] = [];
     const todosManuaisSemMatch: LancamentoManual[] = [];
 
@@ -189,6 +195,41 @@ export function ImportarPage() {
         });
       });
       todosManuaisSemMatch.push(...semMatch);
+    }
+
+    if (arquivoCSV) {
+      const linhasCSV = parseCSVClassificacao(await lerArquivoCSV(arquivoCSV));
+      const projetosAtuais = await db.projetos.toArray();
+
+      const nomesNovos = extrairProjetosNovos(linhasCSV, projetosAtuais);
+      for (const nome of nomesNovos) {
+        await db.projetos.add({ id: novoId(), nome, ativo: true, criadoEm: agora(), atualizadoEm: agora() });
+      }
+      const projetosAtualizados = nomesNovos.length > 0 ? await db.projetos.toArray() : projetosAtuais;
+      const pessoasAtuais = await db.pessoas.toArray();
+
+      const { porChave, avisos } = casarLancamentosComCSV({
+        linhasCSV,
+        lancamentos: todasLinhas.map((l) => ({
+          chave: l.chave,
+          data: l.lancamento.data,
+          valorCentavos: l.lancamento.valorCentavos,
+          parcelaAtual: l.lancamento.parcelaAtual,
+          parcelaTotal: l.lancamento.parcelaTotal,
+        })),
+        pessoas: pessoasAtuais,
+        projetos: projetosAtualizados,
+      });
+
+      for (const l of todasLinhas) {
+        const match = porChave.get(l.chave);
+        if (!match) continue;
+        l.pessoaIdAtual = match.pessoaId;
+        l.projetoIdAtual = match.projetoId;
+        l.descricaoAtual = match.descricao;
+        l.origemPlanilha = true;
+      }
+      setAvisosPlanilha(avisos);
     }
 
     setLinhas(todasLinhas);
@@ -232,6 +273,8 @@ export function ImportarPage() {
     setManuaisSemMatch([]);
     setConcluido(false);
     setNomeArquivo('');
+    setArquivoCSV(null);
+    setAvisosPlanilha([]);
   }
 
   if (concluido) {
@@ -245,12 +288,17 @@ export function ImportarPage() {
     );
   }
 
+  function rotuloDaLinha(l: LinhaConferencia): string {
+    if (l.origemPlanilha) return 'Planilha de classificação';
+    return ROTULO_ORIGEM[l.lancamento.origemClassificacao];
+  }
+
   const grupos = linhas
     ? {
-        automaticos: linhas.filter((l) =>
-          ['continuacao', 'dicionario', 'manual_match'].includes(l.lancamento.origemClassificacao),
+        automaticos: linhas.filter(
+          (l) => l.origemPlanilha || ['continuacao', 'dicionario', 'manual_match'].includes(l.lancamento.origemClassificacao),
         ),
-        naoIdentificados: linhas.filter((l) => l.lancamento.origemClassificacao === 'nao_identificado'),
+        naoIdentificados: linhas.filter((l) => !l.origemPlanilha && l.lancamento.origemClassificacao === 'nao_identificado'),
         ajustes: linhas.filter((l) => l.lancamento.origemClassificacao === 'nao_aplicavel'),
       }
     : null;
@@ -304,6 +352,23 @@ export function ImportarPage() {
         </Card>
       )}
 
+      {extraido && !linhas && prontoParaClassificar && (
+        <Card className="flex flex-col gap-2">
+          <Field label="Planilha de classificação (CSV, opcional)">
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => setArquivoCSV(e.target.files?.[0] ?? null)}
+              className="text-sm"
+            />
+          </Field>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Se você já classificou este mês numa planilha própria (Data;Estabelecimento;Valor;Detalhe;Descrição;Pessoa;Projeto),
+            o app casa cada lançamento do PDF com a linha certa (por data e valor) e pré-preenche Pessoa/Projeto/Descrição.
+          </p>
+        </Card>
+      )}
+
       {finaisFaltando.map((bloco) => (
         <MapearFinal
           key={bloco.final}
@@ -317,6 +382,17 @@ export function ImportarPage() {
       ))}
 
       {prontoParaClassificar && !linhas && <Button onClick={classificar}>Classificar lançamentos</Button>}
+
+      {avisosPlanilha.length > 0 && (
+        <Card className="border-amber-300 dark:border-amber-700">
+          <p className="mb-1 text-sm font-medium">Avisos da planilha</p>
+          <ul className="list-disc pl-5 text-sm text-amber-600">
+            {avisosPlanilha.map((a, i) => (
+              <li key={i}>{a}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {grupos && (
         <div className="flex flex-col gap-4">
@@ -332,7 +408,7 @@ export function ImportarPage() {
                   pessoas={pessoas ?? []}
                   projetos={projetos ?? []}
                   onAtualizar={atualizarLinha}
-                  rotuloOrigem={ROTULO_ORIGEM[l.lancamento.origemClassificacao]}
+                  rotuloOrigem={rotuloDaLinha(l)}
                   nomePessoaAtual={nomePessoa(l.pessoaIdAtual)}
                   nomeProjetoAtual={nomeProjeto(l.projetoIdAtual)}
                 />
@@ -353,7 +429,7 @@ export function ImportarPage() {
                     pessoas={pessoas ?? []}
                     projetos={projetos ?? []}
                     onAtualizar={atualizarLinha}
-                    rotuloOrigem={ROTULO_ORIGEM[l.lancamento.origemClassificacao]}
+                    rotuloOrigem={rotuloDaLinha(l)}
                     nomePessoaAtual={nomePessoa(l.pessoaIdAtual)}
                     nomeProjetoAtual={nomeProjeto(l.projetoIdAtual)}
                     destacar
