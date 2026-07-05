@@ -30,14 +30,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // pdf.js worker is fetched at runtime; cache it too so import works offline
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.endsWith('.worker.mjs'),
-            handler: 'CacheFirst',
-            options: { cacheName: 'pdf-worker-cache' },
-          },
-        ],
+        // O worker do pdf.js (.mjs) é propositalmente deixado FORA do precache e de
+        // qualquer runtimeCaching: interceptar esse request pelo Service Worker
+        // quebra o carregamento do módulo no Safari ("Setting up fake worker
+        // failed: Importing a module script failed"). Sem uma rota registrada
+        // para ele, o Workbox não intercepta o fetch e ele vai direto pra rede.
       },
     }),
   ],
