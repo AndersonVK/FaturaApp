@@ -3,10 +3,16 @@
 // build moderna assume nativas - no Safari/JavaScriptCore ainda não existem e
 // isso quebrava a leitura do PDF com "undefined is not a function".
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-import pdfjsWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
+// Importa o worker como módulo comum (não via Worker real nem `?url`) e o
+// registra em globalThis.pdfjsWorker: o pdf.js detecta isso e roda tudo na
+// thread principal, sem nunca tentar `new Worker(..., {type:'module'})` nem
+// o fallback de `import()` dinâmico - os dois caminhos que vinham falhando
+// no Safari ("Setting up fake worker failed: Importing a module script
+// failed"), mesmo com o arquivo acessível e o Content-Type correto.
+import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type { LinhaTexto } from './types';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+(globalThis as unknown as { pdfjsWorker: unknown }).pdfjsWorker = pdfjsWorker;
 
 /**
  * A fatura Itaú usa layout de duas colunas por página. O pdf.js entrega os
