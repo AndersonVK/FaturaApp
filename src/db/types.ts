@@ -9,6 +9,14 @@ export interface Pessoa {
   atualizadoEm: string;
 }
 
+export interface Projeto {
+  id: string;
+  nome: string;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export interface Conta {
   id: string;
   apelido: string;
@@ -36,6 +44,7 @@ export interface LancamentoManual {
   valorParcelaCentavos: number;
   qtdParcelas: number;
   pessoaId: string;
+  projetoId?: string;
   descricao?: string;
   status: StatusLancamentoManual;
   lancamentoFaturaId?: string;
@@ -78,7 +87,9 @@ export interface LancamentoFatura {
   tipo: TipoLancamentoFatura;
   categoria?: string;
   cidade?: string;
+  descricao?: string; // produto/serviço, texto livre (herdado de lançamento manual ou digitado na conferência)
   pessoaId?: string;
+  projetoId?: string;
   origemClassificacao: OrigemClassificacao;
   lancamentoManualId?: string;
   atualizadoEm: string;
@@ -90,6 +101,8 @@ export interface DicionarioEstabelecimento {
   estabelecimentoExemplo: string; // nome normalizado de exemplo, só para exibição na UI
   cartaoId: string; // string vazia = regra global (fallback); IndexedDB não indexa null de forma confiável
   pessoaId: string;
+  projetoId?: string;
+  descricaoSugerida?: string;
   atualizadoEm: string;
 }
 
@@ -98,6 +111,7 @@ export interface BackupFile {
   exportedAt: string;
   tables: {
     pessoas: Pessoa[];
+    projetos: Projeto[];
     contas: Conta[];
     cartoes: Cartao[];
     lancamentosManuais: LancamentoManual[];

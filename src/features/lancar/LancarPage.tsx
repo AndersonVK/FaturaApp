@@ -12,6 +12,7 @@ function hoje(): string {
 export function LancarPage() {
   const cartoes = useLiveQuery(() => db.cartoes.filter((c) => c.ativo).toArray(), []);
   const pessoas = useLiveQuery(() => db.pessoas.filter((p) => p.ativo).toArray(), []);
+  const projetos = useLiveQuery(() => db.projetos.filter((p) => p.ativo).toArray(), []);
   const pendentes = useLiveQuery(
     () => db.lancamentosManuais.where('status').equals('pendente').reverse().sortBy('data'),
     [],
@@ -22,6 +23,7 @@ export function LancarPage() {
   const [valorCentavos, setValorCentavos] = useState<number | null>(null);
   const [qtdParcelas, setQtdParcelas] = useState('1');
   const [pessoaId, setPessoaId] = useState('');
+  const [projetoId, setProjetoId] = useState('');
   const [descricao, setDescricao] = useState('');
   const [erro, setErro] = useState('');
 
@@ -39,6 +41,7 @@ export function LancarPage() {
       valorParcelaCentavos: valorCentavos,
       qtdParcelas: parcelas,
       pessoaId,
+      projetoId: projetoId || undefined,
       descricao: descricao.trim() || undefined,
       status: 'pendente',
       criadoEm: agora(),
@@ -47,6 +50,7 @@ export function LancarPage() {
 
     setValorCentavos(null);
     setQtdParcelas('1');
+    setProjetoId('');
     setDescricao('');
   }
 
@@ -59,6 +63,10 @@ export function LancarPage() {
   }
   function nomePessoa(id: string) {
     return pessoas?.find((p) => p.id === id)?.nome ?? '?';
+  }
+  function nomeProjeto(id?: string) {
+    if (!id) return null;
+    return projetos?.find((p) => p.id === id)?.nome;
   }
 
   const semCartoes = cartoes?.length === 0;
@@ -117,6 +125,17 @@ export function LancarPage() {
             </Select>
           </Field>
 
+          <Field label="Projeto (opcional)">
+            <Select value={projetoId} onChange={(e) => setProjetoId(e.target.value)}>
+              <option value="">Nenhum</option>
+              {projetos?.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
           <Field label="Descrição (opcional)">
             <TextInput value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex: presente aniversário" />
           </Field>
@@ -140,6 +159,7 @@ export function LancarPage() {
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {lm.data} · {nomeCartao(lm.cartaoId)} · {nomePessoa(lm.pessoaId)}
+                  {nomeProjeto(lm.projetoId) ? ` · ${nomeProjeto(lm.projetoId)}` : ''}
                   {lm.descricao ? ` · ${lm.descricao}` : ''}
                 </p>
               </div>

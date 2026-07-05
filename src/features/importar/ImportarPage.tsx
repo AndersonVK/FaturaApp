@@ -15,7 +15,8 @@ interface LinhaConferencia {
   final: string;
   lancamento: LancamentoClassificado;
   pessoaIdAtual?: string;
-  corrigido: boolean;
+  projetoIdAtual?: string;
+  descricaoAtual?: string;
 }
 
 const ROTULO_ORIGEM: Record<OrigemClassificacao, string> = {
@@ -26,6 +27,14 @@ const ROTULO_ORIGEM: Record<OrigemClassificacao, string> = {
   manual_usuario: 'Classificado manualmente',
   nao_aplicavel: 'Ajuste/encargo',
 };
+
+function foiCorrigido(l: LinhaConferencia): boolean {
+  return (
+    (l.pessoaIdAtual ?? '') !== (l.lancamento.pessoaId ?? '') ||
+    (l.projetoIdAtual ?? '') !== (l.lancamento.projetoId ?? '') ||
+    (l.descricaoAtual ?? '') !== (l.lancamento.descricao ?? '')
+  );
+}
 
 function MapearFinal({
   bloco,
@@ -105,6 +114,7 @@ function MapearFinal({
 export function ImportarPage() {
   const contas = useLiveQuery(() => db.contas.filter((c) => c.ativo).toArray(), []);
   const pessoas = useLiveQuery(() => db.pessoas.filter((p) => p.ativo).toArray(), []);
+  const projetos = useLiveQuery(() => db.projetos.filter((p) => p.ativo).toArray(), []);
   const cartoesTodos = useLiveQuery(() => db.cartoes.toArray(), []);
 
   const [contaId, setContaId] = useState('');
@@ -121,6 +131,10 @@ export function ImportarPage() {
   function nomePessoa(id?: string) {
     if (!id) return null;
     return pessoas?.find((p) => p.id === id)?.nome;
+  }
+  function nomeProjeto(id?: string) {
+    if (!id) return null;
+    return projetos?.find((p) => p.id === id)?.nome;
   }
 
   async function selecionarArquivo(file: File) {
@@ -170,7 +184,8 @@ export function ImportarPage() {
           final: bloco.final,
           lancamento: l,
           pessoaIdAtual: l.pessoaId,
-          corrigido: false,
+          projetoIdAtual: l.projetoId,
+          descricaoAtual: l.descricao,
         });
       });
       todosManuaisSemMatch.push(...semMatch);
@@ -181,14 +196,8 @@ export function ImportarPage() {
     setCarregando(false);
   }
 
-  function alterarPessoa(chave: string, pessoaId: string) {
-    setLinhas((atual) =>
-      (atual ?? []).map((l) =>
-        l.chave === chave
-          ? { ...l, pessoaIdAtual: pessoaId || undefined, corrigido: pessoaId !== (l.lancamento.pessoaId ?? '') }
-          : l,
-      ),
-    );
+  function atualizarLinha(chave: string, alteracoes: Partial<LinhaConferencia>) {
+    setLinhas((atual) => (atual ?? []).map((l) => (l.chave === chave ? { ...l, ...alteracoes } : l)));
   }
 
   async function confirmar() {
@@ -197,8 +206,10 @@ export function ImportarPage() {
     const paraConfirmar: LancamentoParaConfirmar[] = linhas.map((l) => ({
       ...l.lancamento,
       pessoaId: l.pessoaIdAtual,
+      projetoId: l.projetoIdAtual,
+      descricao: l.descricaoAtual,
       cartaoId: l.cartaoId,
-      corrigidoPeloUsuario: l.corrigido,
+      corrigidoPeloUsuario: foiCorrigido(l),
     }));
 
     await confirmarImportacaoFatura({
@@ -319,9 +330,11 @@ export function ImportarPage() {
                   key={l.chave}
                   linha={l}
                   pessoas={pessoas ?? []}
-                  onAlterarPessoa={alterarPessoa}
+                  projetos={projetos ?? []}
+                  onAtualizar={atualizarLinha}
                   rotuloOrigem={ROTULO_ORIGEM[l.lancamento.origemClassificacao]}
                   nomePessoaAtual={nomePessoa(l.pessoaIdAtual)}
+                  nomeProjetoAtual={nomeProjeto(l.projetoIdAtual)}
                 />
               ))}
             </div>
@@ -338,9 +351,11 @@ export function ImportarPage() {
                     key={l.chave}
                     linha={l}
                     pessoas={pessoas ?? []}
-                    onAlterarPessoa={alterarPessoa}
+                    projetos={projetos ?? []}
+                    onAtualizar={atualizarLinha}
                     rotuloOrigem={ROTULO_ORIGEM[l.lancamento.origemClassificacao]}
                     nomePessoaAtual={nomePessoa(l.pessoaIdAtual)}
+                    nomeProjetoAtual={nomeProjeto(l.projetoIdAtual)}
                     destacar
                   />
                 ))}
@@ -391,16 +406,20 @@ export function ImportarPage() {
 function LinhaLancamento({
   linha,
   pessoas,
-  onAlterarPessoa,
+  projetos,
+  onAtualizar,
   rotuloOrigem,
   nomePessoaAtual,
+  nomeProjetoAtual,
   destacar,
 }: {
   linha: LinhaConferencia;
   pessoas: { id: string; nome: string }[];
-  onAlterarPessoa: (chave: string, pessoaId: string) => void;
+  projetos: { id: string; nome: string }[];
+  onAtualizar: (chave: string, alteracoes: Partial<LinhaConferencia>) => void;
   rotuloOrigem: string;
   nomePessoaAtual?: string | null;
+  nomeProjetoAtual?: string | null;
   destacar?: boolean;
 }) {
   const { lancamento } = linha;
@@ -414,22 +433,40 @@ function LinhaLancamento({
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             {lancamento.data} · {formatCentavos(lancamento.valorCentavos)} · {rotuloOrigem}
-            {nomePessoaAtual ? ` · sugestão: ${nomePessoaAtual}` : ''}
+            {nomePessoaAtual ? ` · pessoa: ${nomePessoaAtual}` : ''}
+            {nomeProjetoAtual ? ` · projeto: ${nomeProjetoAtual}` : ''}
           </p>
         </div>
       </div>
-      <Select
-        className="mt-2 w-full"
-        value={linha.pessoaIdAtual ?? ''}
-        onChange={(e) => onAlterarPessoa(linha.chave, e.target.value)}
-      >
-        <option value="">Selecione a Pessoa...</option>
-        {pessoas.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.nome}
-          </option>
-        ))}
-      </Select>
+      <div className="mt-2 flex flex-col gap-2">
+        <Select
+          value={linha.pessoaIdAtual ?? ''}
+          onChange={(e) => onAtualizar(linha.chave, { pessoaIdAtual: e.target.value || undefined })}
+        >
+          <option value="">Selecione a Pessoa...</option>
+          {pessoas.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome}
+            </option>
+          ))}
+        </Select>
+        <Select
+          value={linha.projetoIdAtual ?? ''}
+          onChange={(e) => onAtualizar(linha.chave, { projetoIdAtual: e.target.value || undefined })}
+        >
+          <option value="">Sem projeto</option>
+          {projetos.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome}
+            </option>
+          ))}
+        </Select>
+        <TextInput
+          placeholder="Descrição (produto/serviço, opcional)"
+          value={linha.descricaoAtual ?? ''}
+          onChange={(e) => onAtualizar(linha.chave, { descricaoAtual: e.target.value || undefined })}
+        />
+      </div>
     </Card>
   );
 }

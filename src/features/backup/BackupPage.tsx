@@ -5,6 +5,7 @@ import type { BackupFile } from '../../db/types';
 
 const NOMES_TABELAS = [
   'pessoas',
+  'projetos',
   'contas',
   'cartoes',
   'lancamentosManuais',
@@ -14,7 +15,7 @@ const NOMES_TABELAS = [
 ] as const;
 
 async function exportarBackup(): Promise<BackupFile> {
-  const [pessoas, contas, cartoes, lancamentosManuais, faturas, lancamentosFatura, dicionarioEstabelecimentos] =
+  const [pessoas, projetos, contas, cartoes, lancamentosManuais, faturas, lancamentosFatura, dicionarioEstabelecimentos] =
     await Promise.all(NOMES_TABELAS.map((nome) => db.table(nome).toArray()));
 
   return {
@@ -22,6 +23,7 @@ async function exportarBackup(): Promise<BackupFile> {
     exportedAt: new Date().toISOString(),
     tables: {
       pessoas,
+      projetos,
       contas,
       cartoes,
       lancamentosManuais,
@@ -37,7 +39,7 @@ async function mesclarBackup(backup: BackupFile): Promise<void> {
   await db.transaction('rw', NOMES_TABELAS.map((n) => db.table(n)), async () => {
     for (const nomeTabela of NOMES_TABELAS) {
       const tabela = db.table(nomeTabela);
-      const registrosImportados = backup.tables[nomeTabela] as Array<{ id: string; atualizadoEm?: string }>;
+      const registrosImportados = (backup.tables[nomeTabela] ?? []) as Array<{ id: string; atualizadoEm?: string }>;
       for (const registro of registrosImportados) {
         const existente = await tabela.get(registro.id);
         if (!existente) {
