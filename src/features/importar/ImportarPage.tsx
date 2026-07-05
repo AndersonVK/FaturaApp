@@ -158,8 +158,11 @@ export function ImportarPage() {
         if (existente) mapa[bloco.final] = existente.id;
       }
       setMapeamentoFinais(mapa);
-    } catch {
-      setErro('Não foi possível ler este PDF. Verifique se é uma fatura do Itaú.');
+    } catch (e) {
+      const detalhe = e instanceof Error ? e.message : String(e);
+      setErro(`Não foi possível ler este PDF. Verifique se é uma fatura do Itaú. (detalhe: ${detalhe})`);
+      // eslint-disable-next-line no-console
+      console.error('Erro ao processar PDF da fatura', e);
     } finally {
       setCarregando(false);
     }
