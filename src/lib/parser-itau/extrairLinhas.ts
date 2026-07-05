@@ -1,5 +1,9 @@
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
+// Usa a build "legacy" (não a padrão 'pdfjs-dist') porque ela inclui polyfills
+// para APIs de JS bem recentes (ex: Map.prototype.getOrInsertComputed) que a
+// build moderna assume nativas - no Safari/JavaScriptCore ainda não existem e
+// isso quebrava a leitura do PDF com "undefined is not a function".
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import pdfjsWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
 import type { LinhaTexto } from './types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
