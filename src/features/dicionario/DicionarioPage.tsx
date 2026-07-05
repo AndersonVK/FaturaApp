@@ -7,9 +7,12 @@ import { normalizarEstabelecimento, chaveEstabelecimento } from '../../lib/norma
 function FormNovaEntrada({ onDone }: { onDone: () => void }) {
   const cartoes = useLiveQuery(() => db.cartoes.filter((c) => c.ativo).toArray(), []);
   const pessoas = useLiveQuery(() => db.pessoas.filter((p) => p.ativo).toArray(), []);
+  const projetos = useLiveQuery(() => db.projetos.filter((p) => p.ativo).toArray(), []);
   const [cartaoId, setCartaoId] = useState<string>('global');
   const [estabelecimento, setEstabelecimento] = useState('');
   const [pessoaId, setPessoaId] = useState('');
+  const [projetoId, setProjetoId] = useState('');
+  const [descricaoSugerida, setDescricaoSugerida] = useState('');
 
   async function salvar() {
     if (!estabelecimento.trim() || !pessoaId) return;
@@ -20,6 +23,8 @@ function FormNovaEntrada({ onDone }: { onDone: () => void }) {
       estabelecimentoExemplo: normalizado,
       cartaoId: cartaoId === 'global' ? '' : cartaoId,
       pessoaId,
+      projetoId: projetoId || undefined,
+      descricaoSugerida: descricaoSugerida.trim() || undefined,
       atualizadoEm: agora(),
     });
     onDone();
@@ -50,6 +55,23 @@ function FormNovaEntrada({ onDone }: { onDone: () => void }) {
           ))}
         </Select>
       </Field>
+      <Field label="Projeto (opcional)">
+        <Select value={projetoId} onChange={(e) => setProjetoId(e.target.value)}>
+          <option value="">Nenhum</option>
+          {projetos?.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Descrição sugerida (opcional)">
+        <TextInput
+          value={descricaoSugerida}
+          onChange={(e) => setDescricaoSugerida(e.target.value)}
+          placeholder="Ex: Notion"
+        />
+      </Field>
       <div className="flex gap-2">
         <Button onClick={salvar}>Salvar</Button>
         <Button variant="secondary" onClick={onDone}>
@@ -64,6 +86,7 @@ export function DicionarioPage() {
   const entradas = useLiveQuery(() => db.dicionarioEstabelecimentos.toArray(), []);
   const cartoes = useLiveQuery(() => db.cartoes.toArray(), []);
   const pessoas = useLiveQuery(() => db.pessoas.toArray(), []);
+  const projetos = useLiveQuery(() => db.projetos.toArray(), []);
   const [novaAberta, setNovaAberta] = useState(false);
 
   function nomeCartao(id: string) {
@@ -72,8 +95,8 @@ export function DicionarioPage() {
     return cartao ? `${cartao.apelido} (final ${cartao.final})` : 'Cartão removido';
   }
 
-  async function alterarPessoa(id: string, pessoaId: string) {
-    await db.dicionarioEstabelecimentos.update(id, { pessoaId, atualizadoEm: agora() });
+  async function atualizar(id: string, alteracoes: { pessoaId?: string; projetoId?: string; descricaoSugerida?: string }) {
+    await db.dicionarioEstabelecimentos.update(id, { ...alteracoes, atualizadoEm: agora() });
   }
 
   async function remover(id: string) {
@@ -108,17 +131,31 @@ export function DicionarioPage() {
                 Remover
               </button>
             </div>
-            <Select
-              className="mt-2 w-full"
-              value={entrada.pessoaId}
-              onChange={(e) => alterarPessoa(entrada.id, e.target.value)}
-            >
-              {pessoas?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </Select>
+            <div className="mt-2 flex flex-col gap-2">
+              <Select value={entrada.pessoaId} onChange={(e) => atualizar(entrada.id, { pessoaId: e.target.value })}>
+                {pessoas?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={entrada.projetoId ?? ''}
+                onChange={(e) => atualizar(entrada.id, { projetoId: e.target.value || undefined })}
+              >
+                <option value="">Sem projeto</option>
+                {projetos?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </Select>
+              <TextInput
+                placeholder="Descrição sugerida (opcional)"
+                value={entrada.descricaoSugerida ?? ''}
+                onChange={(e) => atualizar(entrada.id, { descricaoSugerida: e.target.value || undefined })}
+              />
+            </div>
           </Card>
         ))}
       </div>

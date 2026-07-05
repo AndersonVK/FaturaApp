@@ -24,6 +24,7 @@ export function HistoricoPage() {
   );
   const contas = useLiveQuery(() => db.contas.toArray(), []);
   const pessoas = useLiveQuery(() => db.pessoas.toArray(), []);
+  const projetos = useLiveQuery(() => db.projetos.toArray(), []);
   const cartoes = useLiveQuery(() => db.cartoes.toArray(), []);
 
   const meses = useMemo(() => [...new Set(faturas?.map((f) => f.mesReferencia))], [faturas]);
@@ -45,6 +46,10 @@ export function HistoricoPage() {
     if (!id) return 'Sem pessoa';
     return pessoas?.find((p) => p.id === id)?.nome ?? 'Pessoa removida';
   }
+  function nomeProjeto(id?: string) {
+    if (!id) return 'Sem projeto';
+    return projetos?.find((p) => p.id === id)?.nome ?? 'Projeto removido';
+  }
   function nomeCartao(id: string) {
     return cartoes?.find((c) => c.id === id)?.apelido ?? '?';
   }
@@ -61,9 +66,30 @@ export function HistoricoPage() {
     return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
   }, [lancamentos]);
 
+  const totaisPorProjeto = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const l of lancamentos ?? []) {
+      const chave = l.projetoId ?? '__sem_projeto__';
+      mapa.set(chave, (mapa.get(chave) ?? 0) + l.valorCentavos);
+    }
+    return [...mapa.entries()].sort((a, b) => b[1] - a[1]);
+  }, [lancamentos]);
+
   function exportarCSV() {
     const linhas: string[][] = [
-      ['Data', 'Mês referência', 'Conta', 'Cartão', 'Estabelecimento', 'Parcela', 'Valor', 'Pessoa', 'Origem'],
+      [
+        'Data',
+        'Mês referência',
+        'Conta',
+        'Cartão',
+        'Estabelecimento',
+        'Parcela',
+        'Valor',
+        'Descrição',
+        'Pessoa',
+        'Projeto',
+        'Origem',
+      ],
     ];
     for (const l of lancamentos ?? []) {
       const fatura = faturasFiltradas.find((f) => f.id === l.faturaId);
@@ -75,7 +101,9 @@ export function HistoricoPage() {
         l.estabelecimentoOriginal,
         l.parcelaAtual && l.parcelaTotal ? `${l.parcelaAtual}/${l.parcelaTotal}` : '',
         (l.valorCentavos / 100).toFixed(2).replace('.', ','),
+        l.descricao ?? '',
         nomePessoa(l.pessoaId),
+        nomeProjeto(l.projetoId),
         l.origemClassificacao,
       ]);
     }
@@ -109,6 +137,20 @@ export function HistoricoPage() {
             {totaisPorPessoa.map(([pessoaId, total]) => (
               <div key={pessoaId} className="flex justify-between text-sm">
                 <span>{pessoaId === '__sem_pessoa__' ? 'Sem pessoa' : nomePessoa(pessoaId)}</span>
+                <span className="font-medium">{formatCentavos(total)}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {totaisPorProjeto.length > 0 && (
+        <Card>
+          <h3 className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">Total por projeto</h3>
+          <div className="flex flex-col gap-1">
+            {totaisPorProjeto.map(([projetoId, total]) => (
+              <div key={projetoId} className="flex justify-between text-sm">
+                <span>{projetoId === '__sem_projeto__' ? 'Sem projeto' : nomeProjeto(projetoId)}</span>
                 <span className="font-medium">{formatCentavos(total)}</span>
               </div>
             ))}

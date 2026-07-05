@@ -11,6 +11,8 @@ export interface LancamentoClassificado extends LancamentoExtraido {
   estabelecimentoNormalizado: string;
   estabelecimentoChave: string;
   pessoaId?: string;
+  projetoId?: string;
+  descricao?: string;
   origemClassificacao: OrigemClassificacao;
   lancamentoManualId?: string;
 }
@@ -106,6 +108,8 @@ export async function classificarBloco(params: {
       );
       if (anterior?.pessoaId) {
         classificado.pessoaId = anterior.pessoaId;
+        classificado.projetoId = anterior.projetoId;
+        classificado.descricao = anterior.descricao;
         classificado.origemClassificacao = 'continuacao';
         resultado.push(classificado);
         continue;
@@ -116,6 +120,8 @@ export async function classificarBloco(params: {
     const entradaDicionario = dicionario.get(estabelecimentoChave);
     if (entradaDicionario) {
       classificado.pessoaId = entradaDicionario.pessoaId;
+      classificado.projetoId = entradaDicionario.projetoId;
+      classificado.descricao = entradaDicionario.descricaoSugerida;
       classificado.origemClassificacao = 'dicionario';
       resultado.push(classificado);
       continue;
@@ -141,6 +147,8 @@ export async function classificarBloco(params: {
       if (melhorIndice >= 0) {
         const manual = manuaisDisponiveis[melhorIndice];
         classificado.pessoaId = manual.pessoaId;
+        classificado.projetoId = manual.projetoId;
+        classificado.descricao = manual.descricao;
         classificado.origemClassificacao = 'manual_match';
         classificado.lancamentoManualId = manual.id;
         manuaisDisponiveis.splice(melhorIndice, 1);

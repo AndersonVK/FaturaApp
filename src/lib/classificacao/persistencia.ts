@@ -13,6 +13,8 @@ export async function upsertDicionario(
   estabelecimentoChave: string,
   estabelecimentoExemplo: string,
   pessoaId: string,
+  projetoId?: string,
+  descricaoSugerida?: string,
 ): Promise<void> {
   const existente = await db.dicionarioEstabelecimentos
     .where('[cartaoId+estabelecimentoChave]')
@@ -20,7 +22,12 @@ export async function upsertDicionario(
     .first();
 
   if (existente) {
-    await db.dicionarioEstabelecimentos.update(existente.id, { pessoaId, atualizadoEm: agora() });
+    await db.dicionarioEstabelecimentos.update(existente.id, {
+      pessoaId,
+      projetoId,
+      descricaoSugerida,
+      atualizadoEm: agora(),
+    });
     return;
   }
 
@@ -30,6 +37,8 @@ export async function upsertDicionario(
     estabelecimentoExemplo,
     cartaoId,
     pessoaId,
+    projetoId,
+    descricaoSugerida,
     atualizadoEm: agora(),
   });
 }
@@ -89,7 +98,9 @@ export async function confirmarImportacaoFatura(params: {
           tipo: lancamento.tipo,
           categoria: lancamento.categoria,
           cidade: lancamento.cidade,
+          descricao: lancamento.descricao,
           pessoaId: lancamento.pessoaId,
+          projetoId: lancamento.projetoId,
           origemClassificacao,
           lancamentoManualId: lancamento.lancamentoManualId,
           atualizadoEm: agoraStr,
@@ -116,6 +127,8 @@ export async function confirmarImportacaoFatura(params: {
             lancamento.estabelecimentoChave,
             lancamento.estabelecimentoNormalizado,
             lancamento.pessoaId,
+            lancamento.projetoId,
+            lancamento.descricao,
           );
         }
       }

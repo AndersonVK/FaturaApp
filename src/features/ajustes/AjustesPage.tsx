@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 const links = [
   { to: '/ajustes/cartoes', label: 'Cartões', descricao: 'Contas Itaú e cartões finais', icon: '💳' },
   { to: '/ajustes/pessoas', label: 'Pessoas', descricao: 'Quem usa os cartões', icon: '🧑‍🤝‍🧑' },
-  { to: '/ajustes/dicionario', label: 'Dicionário', descricao: 'Estabelecimento → Pessoa', icon: '📖' },
+  { to: '/ajustes/projetos', label: 'Projetos', descricao: 'Centros de custo/projetos', icon: '🗂️' },
+  { to: '/ajustes/dicionario', label: 'Dicionário', descricao: 'Estabelecimento → Pessoa/Projeto', icon: '📖' },
   { to: '/ajustes/backup', label: 'Backup e Restauração', descricao: 'Exportar/importar dados', icon: '💾' },
 ];
 

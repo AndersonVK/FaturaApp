@@ -8,6 +8,7 @@ const HistoricoPage = lazy(() => import('./features/historico/HistoricoPage').th
 const AjustesPage = lazy(() => import('./features/ajustes/AjustesPage').then((m) => ({ default: m.AjustesPage })));
 const CartoesPage = lazy(() => import('./features/cartoes/CartoesPage').then((m) => ({ default: m.CartoesPage })));
 const PessoasPage = lazy(() => import('./features/pessoas/PessoasPage').then((m) => ({ default: m.PessoasPage })));
+const ProjetosPage = lazy(() => import('./features/projetos/ProjetosPage').then((m) => ({ default: m.ProjetosPage })));
 const DicionarioPage = lazy(() => import('./features/dicionario/DicionarioPage').then((m) => ({ default: m.DicionarioPage })));
 const BackupPage = lazy(() => import('./features/backup/BackupPage').then((m) => ({ default: m.BackupPage })));
 
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="ajustes" element={<AjustesPage />} />
             <Route path="ajustes/cartoes" element={<CartoesPage />} />
             <Route path="ajustes/pessoas" element={<PessoasPage />} />
+            <Route path="ajustes/projetos" element={<ProjetosPage />} />
             <Route path="ajustes/dicionario" element={<DicionarioPage />} />
             <Route path="ajustes/backup" element={<BackupPage />} />
             <Route path="*" element={<Navigate to="/lancar" replace />} />
