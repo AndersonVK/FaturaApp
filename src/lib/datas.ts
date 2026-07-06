@@ -60,6 +60,22 @@ export function mesReferencia(dataFechamentoISO: string): string {
   return dataFechamentoISO.slice(0, 7);
 }
 
+/**
+ * Mês de referência (competência) padrão da fatura, derivado do VENCIMENTO
+ * menos 1 mês. É a convenção mais robusta: o vencimento cai sempre no mês
+ * seguinte ao ciclo de gastos, independente de o cartão fechar no fim do mês
+ * (ex: Itaú, emissão 30/05) ou no dia 1º do mês seguinte (ex: Azul, emissão
+ * 01/06) - nos dois casos o vencimento é em junho e a competência é maio.
+ * Continua editável na tela de importação para cobrir configurações atípicas.
+ */
+export function mesReferenciaPadrao(dataVencimentoISO: string): string {
+  const venc = new Date(`${dataVencimentoISO}T00:00:00Z`);
+  const anterior = addMeses(venc, -1);
+  const ano = anterior.getUTCFullYear();
+  const mes = String(anterior.getUTCMonth() + 1).padStart(2, '0');
+  return `${ano}-${mes}`;
+}
+
 export function diferencaEmDias(dataISO1: string, dataISO2: string): number {
   const d1 = new Date(`${dataISO1}T00:00:00Z`).getTime();
   const d2 = new Date(`${dataISO2}T00:00:00Z`).getTime();

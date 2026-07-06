@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, novoId, agora } from '../../db/db';
 import { Button, Card, Field, Select, TextInput } from '../../components/ui';
 import { formatCentavos } from '../../lib/money';
-import { mesReferencia as calcularMesReferencia } from '../../lib/datas';
+import { mesReferenciaPadrao } from '../../lib/datas';
 import { parseFaturaItauPDF, type FaturaExtraida, type BlocoFinal } from '../../lib/parser-itau';
 import { classificarBloco, type LancamentoClassificado } from '../../lib/classificacao/classificar';
 import { confirmarImportacaoFatura, type LancamentoParaConfirmar } from '../../lib/classificacao/persistencia';
@@ -132,6 +132,7 @@ export function ImportarPage() {
   const [concluido, setConcluido] = useState(false);
   const [arquivoCSV, setArquivoCSV] = useState<File | null>(null);
   const [avisosPlanilha, setAvisosPlanilha] = useState<string[]>([]);
+  const [mesRef, setMesRef] = useState('');
 
   function nomePessoa(id?: string) {
     if (!id) return null;
@@ -151,6 +152,7 @@ export function ImportarPage() {
     try {
       const resultado = await parseFaturaItauPDF(file);
       setExtraido(resultado);
+      setMesRef(mesReferenciaPadrao(resultado.dataVencimento));
       const cartoesDaConta = (cartoesTodos ?? []).filter((c) => c.contaId === contaId);
       const mapa: Record<string, string> = {};
       for (const bloco of resultado.blocos) {
@@ -260,7 +262,7 @@ export function ImportarPage() {
 
     await confirmarImportacaoFatura({
       contaId,
-      mesReferencia: calcularMesReferencia(extraido.dataFechamento),
+      mesReferencia: mesRef || mesReferenciaPadrao(extraido.dataVencimento),
       dataFechamento: extraido.dataFechamento,
       dataVencimento: extraido.dataVencimento,
       totalFaturaCentavos: extraido.totalFaturaCentavos,
@@ -280,6 +282,7 @@ export function ImportarPage() {
     setNomeArquivo('');
     setArquivoCSV(null);
     setAvisosPlanilha([]);
+    setMesRef('');
   }
 
   if (concluido) {
@@ -347,6 +350,9 @@ export function ImportarPage() {
             Total: <strong>{formatCentavos(extraido.totalFaturaCentavos)}</strong>
           </p>
           <p className="text-slate-500 dark:text-slate-400">{extraido.blocos.length} cartão(ões) final(is) encontrados.</p>
+          <Field label="Mês de referência (competência)">
+            <TextInput type="month" value={mesRef} onChange={(e) => setMesRef(e.target.value)} />
+          </Field>
           {extraido.avisos.length > 0 && (
             <ul className="list-disc pl-5 text-amber-600">
               {extraido.avisos.map((a, i) => (
