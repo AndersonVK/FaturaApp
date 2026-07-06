@@ -96,9 +96,17 @@ function tokenizarCSV(texto: string, delimitador = ';'): string[][] {
   return linhas.filter((l) => l.some((campo) => campo.trim() !== ''));
 }
 
+/**
+ * Aceita "DD/MM/YYYY" (planilha com ano) e "DD/MM" (planilha sem ano, comum).
+ * Sem ano, retorna só "MM-DD" - o casamento com o PDF é feito por dia+mês+valor
+ * (o valor já discrimina), então o ano é dispensável.
+ */
 function dataBrParaIso(dataBr: string): string {
-  const [dia, mes, ano] = dataBr.trim().split('/');
-  return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  const partes = dataBr.trim().split('/');
+  const dia = (partes[0] ?? '').padStart(2, '0');
+  const mes = (partes[1] ?? '').padStart(2, '0');
+  const ano = partes[2];
+  return ano ? `${ano}-${mes}-${dia}` : `${mes}-${dia}`;
 }
 
 export function parseCSVClassificacao(texto: string): LinhaCSVClassificacao[] {

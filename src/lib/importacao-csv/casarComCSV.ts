@@ -2,6 +2,17 @@ import type { LinhaCSVClassificacao } from './parseCSVClassificacao';
 
 const TOLERANCIA_VALOR_CENTAVOS = 1;
 
+/**
+ * Compara datas por dia+mês ("MM-DD"), ignorando o ano. O CSV pode vir sem ano
+ * ("MM-DD") ou com ano ("YYYY-MM-DD"); o PDF sempre traz "YYYY-MM-DD" com o ano
+ * inferido (que pode até divergir em parcelas antigas que cruzam a virada de
+ * ano). Como o valor já discrimina e a parcela desempata, dia+mês é a chave
+ * robusta que funciona nos dois formatos de planilha.
+ */
+function chaveDiaMes(dataISO: string): string {
+  return dataISO.length >= 5 ? dataISO.slice(-5) : dataISO;
+}
+
 export interface LancamentoParaCasar {
   chave: string;
   data: string;
@@ -49,7 +60,7 @@ export function casarLancamentosComCSV(params: {
   for (const lancamento of lancamentos) {
     const candidatos = linhasDisponiveis.filter(
       (linha) =>
-        linha.data === lancamento.data &&
+        chaveDiaMes(linha.data) === chaveDiaMes(lancamento.data) &&
         Math.abs(linha.valorCentavos - lancamento.valorCentavos) <= TOLERANCIA_VALOR_CENTAVOS,
     );
 
