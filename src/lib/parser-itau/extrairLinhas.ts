@@ -1,7 +1,10 @@
+// IMPORTANTE: os polyfills precisam ser importados antes do pdf.js (ver
+// comentários em ./polyfills - cobrem iteração assíncrona de ReadableStream e
+// Promise.try, que o pdf.js usa sem proteção e Safari só tem nas versões mais
+// recentes).
+import './polyfills';
 // Usa a build "legacy" (não a padrão 'pdfjs-dist') porque ela inclui polyfills
-// para APIs de JS bem recentes (ex: Map.prototype.getOrInsertComputed) que a
-// build moderna assume nativas - no Safari/JavaScriptCore ainda não existem e
-// isso quebrava a leitura do PDF com "undefined is not a function".
+// para APIs de JS bem recentes que a build moderna assume nativas.
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 // Importa o worker como módulo comum (não via Worker real nem `?url`) e o
 // registra em globalThis.pdfjsWorker: o pdf.js detecta isso e roda tudo na

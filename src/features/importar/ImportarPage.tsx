@@ -159,7 +159,9 @@ export function ImportarPage() {
       }
       setMapeamentoFinais(mapa);
     } catch (e) {
-      const detalhe = e instanceof Error ? e.message : String(e);
+      // Inclui o início do stack para diagnosticar falhas que só ocorrem em
+      // certos navegadores (a mensagem sozinha não diz onde quebrou).
+      const detalhe = e instanceof Error ? `${e.message} @ ${(e.stack ?? '').slice(0, 300)}` : String(e);
       setErro(`Não foi possível ler este PDF. Verifique se é uma fatura do Itaú. (detalhe: ${detalhe})`);
       // eslint-disable-next-line no-console
       console.error('Erro ao processar PDF da fatura', e);
