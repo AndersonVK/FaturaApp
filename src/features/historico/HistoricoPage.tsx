@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
-import { Button, Card, EmptyState, Select } from '../../components/ui';
+import { Button, Card, EmptyState, Select, TextInput } from '../../components/ui';
 import { formatCentavos } from '../../lib/money';
 
 function baixarCSV(nomeArquivo: string, linhas: string[][]) {
@@ -29,6 +29,14 @@ export function HistoricoPage() {
 
   const meses = useMemo(() => [...new Set(faturas?.map((f) => f.mesReferencia))], [faturas]);
   const [mesSelecionado, setMesSelecionado] = useState('todos');
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [mesEditado, setMesEditado] = useState('');
+
+  async function salvarMesRef(id: string) {
+    if (!/^\d{4}-\d{2}$/.test(mesEditado)) return;
+    await db.faturas.update(id, { mesReferencia: mesEditado });
+    setEditandoId(null);
+  }
 
   const faturasFiltradas = useMemo(
     () => (mesSelecionado === 'todos' ? faturas ?? [] : (faturas ?? []).filter((f) => f.mesReferencia === mesSelecionado)),
@@ -161,10 +169,32 @@ export function HistoricoPage() {
       <div className="flex flex-col gap-2">
         {faturasFiltradas.map((fatura) => (
           <Card key={fatura.id}>
-            <p className="text-sm font-medium">
-              {nomeConta(fatura.contaId)} · {fatura.mesReferencia}
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium">
+                {nomeConta(fatura.contaId)} · {fatura.mesReferencia}
+              </p>
+              {editandoId !== fatura.id && (
+                <button
+                  className="text-xs text-brand-600 underline dark:text-brand-500"
+                  onClick={() => {
+                    setEditandoId(fatura.id);
+                    setMesEditado(fatura.mesReferencia);
+                  }}
+                >
+                  Editar mês
+                </button>
+              )}
+            </div>
+            {editandoId === fatura.id && (
+              <div className="mt-2 flex gap-2">
+                <TextInput type="month" value={mesEditado} onChange={(e) => setMesEditado(e.target.value)} className="flex-1" />
+                <Button onClick={() => salvarMesRef(fatura.id)}>Salvar</Button>
+                <Button variant="secondary" onClick={() => setEditandoId(null)}>
+                  Cancelar
+                </Button>
+              </div>
+            )}
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Fechamento {fatura.dataFechamento} · Vencimento {fatura.dataVencimento} · Total{' '}
               {formatCentavos(fatura.totalFaturaCentavos)}
             </p>
