@@ -50,7 +50,10 @@ function FormNovoCartao({ contaId, onDone }: { contaId: string; onDone: () => vo
   const [titularNome, setTitularNome] = useState('');
 
   async function salvar() {
-    if (!apelido.trim() || !/^\d{3,4}$/.test(final.trim())) return;
+    // O final é opcional: faturas mais novas do Itaú não informam os últimos
+    // dígitos dos cartões adicionais, e nesses casos o vínculo é pelo titular.
+    if (!apelido.trim()) return;
+    if (final.trim() && !/^\d{3,4}$/.test(final.trim())) return;
     await db.cartoes.add({
       id: novoId(),
       contaId,
@@ -68,7 +71,7 @@ function FormNovoCartao({ contaId, onDone }: { contaId: string; onDone: () => vo
       <Field label="Apelido do cartão">
         <TextInput value={apelido} onChange={(e) => setApelido(e.target.value)} placeholder="Ex: Cartão Anderson" autoFocus />
       </Field>
-      <Field label="Final (últimos 3-4 dígitos, como aparece na fatura)">
+      <Field label="Final (últimos 3-4 dígitos; deixe vazio se a fatura não informa)">
         <TextInput value={final} onChange={(e) => setFinal(e.target.value.replace(/\D/g, ''))} placeholder="Ex: 7898" />
       </Field>
       <Field label="Nome do titular impresso na fatura">
@@ -139,7 +142,8 @@ export function CartoesPage() {
                   <div>
                     <p className="text-sm font-medium">{cartao.apelido}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      final {cartao.final} · {cartao.titularNome}
+                      {cartao.final ? `final ${cartao.final} · ` : ''}
+                      {cartao.titularNome}
                     </p>
                   </div>
                   <button

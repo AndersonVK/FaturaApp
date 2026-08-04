@@ -39,6 +39,10 @@ function foiCorrigido(l: LinhaConferencia): boolean {
   );
 }
 
+function descreverBloco(bloco: BlocoFinal): string {
+  return bloco.final ? `${bloco.titularNome} (final ${bloco.final})` : bloco.titularNome;
+}
+
 function MapearFinal({
   bloco,
   contaId,
@@ -48,11 +52,12 @@ function MapearFinal({
   bloco: BlocoFinal;
   contaId: string;
   cartoesLivres: { id: string; apelido: string; final: string }[];
-  onResolvido: (final: string, cartaoId: string) => void;
+  onResolvido: (chave: string, cartaoId: string) => void;
 }) {
   const [modo, setModo] = useState<'existente' | 'novo'>(cartoesLivres.length > 0 ? 'existente' : 'novo');
   const [cartaoExistenteId, setCartaoExistenteId] = useState('');
   const [apelido, setApelido] = useState(bloco.titularNome);
+  const [final, setFinal] = useState(bloco.final);
 
   async function confirmarNovo() {
     const id = novoId();
@@ -60,20 +65,26 @@ function MapearFinal({
       id,
       contaId,
       apelido: apelido.trim() || bloco.titularNome,
-      final: bloco.final,
+      final: final.trim(),
       titularNome: bloco.titularNome,
       ativo: true,
       atualizadoEm: agora(),
     });
-    onResolvido(bloco.final, id);
+    onResolvido(bloco.chave, id);
   }
 
   return (
     <Card className="flex flex-col gap-3">
       <p className="text-sm">
-        A fatura tem lançamentos do cartão <strong>{bloco.titularNome} (final {bloco.final})</strong>, que ainda não está
-        cadastrado nesta conta. Vincule a um cartão existente ou crie um novo.
+        A fatura tem lançamentos do cartão <strong>{descreverBloco(bloco)}</strong>, que ainda não está cadastrado nesta
+        conta. Vincule a um cartão existente ou crie um novo.
       </p>
+      {!bloco.final && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Esta fatura não informa os últimos dígitos dos cartões adicionais - a identificação é feita pelo nome do
+          titular. Você pode preencher o final manualmente ao criar o cartão, se quiser.
+        </p>
+      )}
 
       <div className="flex gap-4 text-sm">
         <label className="flex items-center gap-1">
@@ -92,22 +103,29 @@ function MapearFinal({
             <option value="">Selecione...</option>
             {cartoesLivres.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.apelido} (final {c.final})
+                {c.apelido}
+                {c.final ? ` (final ${c.final})` : ''}
               </option>
             ))}
           </Select>
-          <Button disabled={!cartaoExistenteId} onClick={() => onResolvido(bloco.final, cartaoExistenteId)}>
+          <Button disabled={!cartaoExistenteId} onClick={() => onResolvido(bloco.chave, cartaoExistenteId)}>
             Vincular
           </Button>
         </div>
       ) : (
-        <div className="flex gap-2">
+        <div className="flex items-end gap-2">
           <Field label="Apelido do novo cartão">
             <TextInput value={apelido} onChange={(e) => setApelido(e.target.value)} />
           </Field>
-          <Button onClick={confirmarNovo} className="self-end">
-            Criar
-          </Button>
+          <Field label="Final (opcional)">
+            <TextInput
+              value={final}
+              onChange={(e) => setFinal(e.target.value.replace(/\D/g, ''))}
+              placeholder="ex: 2177"
+              className="w-24"
+            />
+          </Field>
+          <Button onClick={confirmarNovo}>Criar</Button>
         </div>
       )}
     </Card>
@@ -156,8 +174,15 @@ export function ImportarPage() {
       const cartoesDaConta = (cartoesTodos ?? []).filter((c) => c.contaId === contaId);
       const mapa: Record<string, string> = {};
       for (const bloco of resultado.blocos) {
-        const existente = cartoesDaConta.find((c) => c.final === bloco.final);
-        if (existente) mapa[bloco.final] = existente.id;
+        // Faturas mais novas não trazem o final dos cartões adicionais, só o
+        // nome do titular - nesse caso o vínculo é feito por nome (o que o
+        // usuário definiu na primeira importação passa a valer nas seguintes).
+        const existente = bloco.final
+          ? cartoesDaConta.find((c) => c.final === bloco.final)
+          : cartoesDaConta.find(
+              (c) => c.titularNome.trim().toUpperCase() === bloco.titularNome.trim().toUpperCase(),
+            );
+        if (existente) mapa[bloco.chave] = existente.id;
       }
       setMapeamentoFinais(mapa);
     } catch (e) {
@@ -172,7 +197,7 @@ export function ImportarPage() {
     }
   }
 
-  const finaisFaltando = extraido?.blocos.filter((b) => !mapeamentoFinais[b.final]) ?? [];
+  const finaisFaltando = extraido?.blocos.filter((b) => !mapeamentoFinais[b.chave]) ?? [];
   const prontoParaClassificar = !!extraido && finaisFaltando.length === 0;
 
   async function classificar() {
@@ -183,7 +208,7 @@ export function ImportarPage() {
     const todosManuaisSemMatch: LancamentoManual[] = [];
 
     for (const bloco of extraido.blocos) {
-      const cartaoId = mapeamentoFinais[bloco.final];
+      const cartaoId = mapeamentoFinais[bloco.chave];
       const { lancamentos, manuaisSemMatch: semMatch } = await classificarBloco({
         contaId,
         cartaoId,
@@ -192,7 +217,7 @@ export function ImportarPage() {
       });
       lancamentos.forEach((l, idx) => {
         todasLinhas.push({
-          chave: `${bloco.final}-${idx}`,
+          chave: `${bloco.chave}-${idx}`,
           cartaoId,
           final: bloco.final,
           lancamento: l,
@@ -382,13 +407,13 @@ export function ImportarPage() {
 
       {finaisFaltando.map((bloco) => (
         <MapearFinal
-          key={bloco.final}
+          key={bloco.chave}
           bloco={bloco}
           contaId={contaId}
           cartoesLivres={(cartoesTodos ?? []).filter(
             (c) => c.contaId === contaId && !Object.values(mapeamentoFinais).includes(c.id),
           )}
-          onResolvido={(final, cartaoId) => setMapeamentoFinais((m) => ({ ...m, [final]: cartaoId }))}
+          onResolvido={(chave, cartaoId) => setMapeamentoFinais((m) => ({ ...m, [chave]: cartaoId }))}
         />
       ))}
 

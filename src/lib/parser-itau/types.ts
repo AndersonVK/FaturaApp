@@ -17,7 +17,12 @@ export interface LancamentoExtraido {
 }
 
 export interface BlocoFinal {
+  /** Identificador do bloco dentro desta fatura: o final quando o PDF o
+   * informa, senão derivado do nome do titular (layouts mais novos do Itaú
+   * trazem só o nome, sem "(final XXXX)"). */
+  chave: string;
   titularNome: string;
+  /** Últimos dígitos do cartão; string vazia quando o PDF não os informa. */
   final: string;
   lancamentos: LancamentoExtraido[];
   subtotalDeclaradoCentavos: number | null;
