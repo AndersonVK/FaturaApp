@@ -14,6 +14,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 // failed"), mesmo com o arquivo acessível e o Content-Type correto.
 import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import type { LinhaTexto } from './types';
+import { detectarCorteColunas, type ItemPosicionado } from './colunas';
 
 (globalThis as unknown as { pdfjsWorker: unknown }).pdfjsWorker = pdfjsWorker;
 
@@ -28,13 +29,6 @@ import type { LinhaTexto } from './types';
  */
 const TOLERANCIA_Y = 2;
 const GAP_MINIMO_ESPACO = 1.5;
-
-interface ItemPosicionado {
-  texto: string;
-  x: number;
-  y: number;
-  largura: number;
-}
 
 export async function extrairLinhasDoPDF(dados: ArrayBuffer): Promise<LinhaTexto[]> {
   const pdf = await pdfjsLib.getDocument({ data: dados }).promise;
@@ -56,9 +50,7 @@ export async function extrairLinhasDoPDF(dados: ArrayBuffer): Promise<LinhaTexto
       });
     }
 
-    // Corte calibrado no layout padrão da fatura Itaú (~60% da largura da
-    // página); páginas de uma coluna só ficam com o grupo "esquerda".
-    const xCorte = viewport.width * 0.6;
+    const xCorte = detectarCorteColunas(itens, viewport.width);
 
     for (const coluna of ['esquerda', 'direita'] as const) {
       const itensCol = itens.filter((it) => (coluna === 'esquerda' ? it.x < xCorte : it.x >= xCorte));
