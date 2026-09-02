@@ -23,7 +23,10 @@ export async function lerArquivoCSV(arquivo: File): Promise<string> {
   }
 }
 
+/** "Parcela 3 de 7" dentro da coluna Detalhe. */
 const RE_PARCELA_DETALHE = /Parcela\s+(\d+)\s+de\s+(\d+)/i;
+/** Coluna "Parcela" dedicada, em "3 de 7" ou "3/7". */
+const RE_PARCELA_COLUNA = /^(\d{1,2})\s*(?:de|\/)\s*(\d{1,2})$/i;
 
 export interface LinhaCSVClassificacao {
   data: string; // YYYY-MM-DD
@@ -119,6 +122,7 @@ export function parseCSVClassificacao(texto: string): LinhaCSVClassificacao[] {
   const idxData = indice('data');
   const idxValor = indice('valor');
   const idxDetalhe = indice('detalhe');
+  const idxParcela = indice('parcela');
   const idxDescricao = indice('descri');
   const idxPessoa = indice('pessoa');
   const idxProjeto = indice('projeto');
@@ -130,8 +134,11 @@ export function parseCSVClassificacao(texto: string): LinhaCSVClassificacao[] {
     const nomePessoa = campos[idxPessoa]?.trim();
     if (!dataBr || !nomePessoa) continue;
 
+    // A parcela pode vir dentro de "Detalhe" ("Parcela 3 de 7") ou numa coluna
+    // "Parcela" própria ("3 de 7" / "3/7").
     const detalhe = campos[idxDetalhe]?.trim() ?? '';
-    const mParcela = detalhe.match(RE_PARCELA_DETALHE);
+    const colunaParcela = (idxParcela >= 0 ? campos[idxParcela] : '')?.trim() ?? '';
+    const mParcela = detalhe.match(RE_PARCELA_DETALHE) ?? colunaParcela.match(RE_PARCELA_COLUNA);
 
     const projetoTexto = campos[idxProjeto]?.trim() ?? '';
     const nomeProjeto = projetoTexto && projetoTexto !== '0' ? projetoTexto : undefined;

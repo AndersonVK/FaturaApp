@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, novoId, agora } from '../../db/db';
+import { ordenarPorNome } from '../../lib/ordenar';
 import { Button, Card, EmptyState, Field, Select, TextInput } from '../../components/ui';
 import { normalizarEstabelecimento, chaveEstabelecimento } from '../../lib/normalize';
 
 function FormNovaEntrada({ onDone }: { onDone: () => void }) {
   const cartoes = useLiveQuery(() => db.cartoes.filter((c) => c.ativo).toArray(), []);
-  const pessoas = useLiveQuery(() => db.pessoas.filter((p) => p.ativo).toArray(), []);
-  const projetos = useLiveQuery(() => db.projetos.filter((p) => p.ativo).toArray(), []);
+  const pessoas = useLiveQuery(() => db.pessoas.filter((p) => p.ativo).toArray().then(ordenarPorNome), []);
+  const projetos = useLiveQuery(() => db.projetos.filter((p) => p.ativo).toArray().then(ordenarPorNome), []);
   const [cartaoId, setCartaoId] = useState<string>('global');
   const [estabelecimento, setEstabelecimento] = useState('');
   const [pessoaId, setPessoaId] = useState('');
@@ -85,8 +86,8 @@ function FormNovaEntrada({ onDone }: { onDone: () => void }) {
 export function DicionarioPage() {
   const entradas = useLiveQuery(() => db.dicionarioEstabelecimentos.toArray(), []);
   const cartoes = useLiveQuery(() => db.cartoes.toArray(), []);
-  const pessoas = useLiveQuery(() => db.pessoas.toArray(), []);
-  const projetos = useLiveQuery(() => db.projetos.toArray(), []);
+  const pessoas = useLiveQuery(() => db.pessoas.toArray().then(ordenarPorNome), []);
+  const projetos = useLiveQuery(() => db.projetos.toArray().then(ordenarPorNome), []);
   const [novaAberta, setNovaAberta] = useState(false);
 
   function nomeCartao(id: string) {

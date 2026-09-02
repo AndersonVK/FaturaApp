@@ -107,7 +107,9 @@ export function HistoricoPage() {
         fatura ? nomeConta(fatura.contaId) : '',
         nomeCartao(l.cartaoId),
         l.estabelecimentoOriginal,
-        l.parcelaAtual && l.parcelaTotal ? `${l.parcelaAtual}/${l.parcelaTotal}` : '',
+        // "3 de 4" em vez de "3/4": o Excel converte "3/4" para data (3 de
+        // abril), perdendo o total de parcelas.
+        l.parcelaAtual && l.parcelaTotal ? `${l.parcelaAtual} de ${l.parcelaTotal}` : '',
         (l.valorCentavos / 100).toFixed(2).replace('.', ','),
         l.descricao ?? '',
         nomePessoa(l.pessoaId),

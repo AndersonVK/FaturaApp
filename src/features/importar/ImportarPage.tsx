@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, novoId, agora } from '../../db/db';
+import { ordenarPorNome } from '../../lib/ordenar';
 import { Button, Card, Field, Select, TextInput } from '../../components/ui';
 import { formatCentavos } from '../../lib/money';
 import { mesReferenciaPadrao } from '../../lib/datas';
@@ -134,8 +135,8 @@ function MapearFinal({
 
 export function ImportarPage() {
   const contas = useLiveQuery(() => db.contas.filter((c) => c.ativo).toArray(), []);
-  const pessoas = useLiveQuery(() => db.pessoas.filter((p) => p.ativo).toArray(), []);
-  const projetos = useLiveQuery(() => db.projetos.filter((p) => p.ativo).toArray(), []);
+  const pessoas = useLiveQuery(() => db.pessoas.filter((p) => p.ativo).toArray().then(ordenarPorNome), []);
+  const projetos = useLiveQuery(() => db.projetos.filter((p) => p.ativo).toArray().then(ordenarPorNome), []);
   const cartoesTodos = useLiveQuery(() => db.cartoes.toArray(), []);
 
   const [contaId, setContaId] = useState('');
