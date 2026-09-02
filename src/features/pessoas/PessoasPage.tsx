@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, novoId, agora } from '../../db/db';
+import { ordenarPorNome } from '../../lib/ordenar';
 import { Button, Card, EmptyState, TextInput } from '../../components/ui';
 
 export function PessoasPage() {
-  const pessoas = useLiveQuery(() => db.pessoas.toArray(), []);
+  const pessoas = useLiveQuery(() => db.pessoas.toArray().then(ordenarPorNome), []);
   const [novoNome, setNovoNome] = useState('');
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nomeEditado, setNomeEditado] = useState('');

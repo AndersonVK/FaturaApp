@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, novoId, agora } from '../../db/db';
+import { ordenarPorNome } from '../../lib/ordenar';
 import { Button, Card, EmptyState, Field, Select, TextInput } from '../../components/ui';
 import { MoneyInput } from '../../components/MoneyInput';
 import { formatCentavos } from '../../lib/money';
@@ -11,8 +12,8 @@ function hoje(): string {
 
 export function LancarPage() {
   const cartoes = useLiveQuery(() => db.cartoes.filter((c) => c.ativo).toArray(), []);
-  const pessoas = useLiveQuery(() => db.pessoas.filter((p) => p.ativo).toArray(), []);
-  const projetos = useLiveQuery(() => db.projetos.filter((p) => p.ativo).toArray(), []);
+  const pessoas = useLiveQuery(() => db.pessoas.filter((p) => p.ativo).toArray().then(ordenarPorNome), []);
+  const projetos = useLiveQuery(() => db.projetos.filter((p) => p.ativo).toArray().then(ordenarPorNome), []);
   const pendentes = useLiveQuery(
     () => db.lancamentosManuais.where('status').equals('pendente').reverse().sortBy('data'),
     [],
