@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { db, agora } from '../../db/db';
 import { upsertDicionario } from '../../lib/classificacao/persistencia';
 import { formatCentavos } from '../../lib/money';
-import { Card, Select } from '../../components/ui';
+import { Button, Card, Select } from '../../components/ui';
 import type { LancamentoFatura, Pessoa, Projeto } from '../../db/types';
 
 /**
@@ -81,25 +81,47 @@ export function LancamentosDoMes({
   pessoas,
   projetos,
   nomeCartao,
+  subtitulo,
 }: {
   lancamentos: LancamentoFatura[];
   pessoas: Pessoa[];
   projetos: Projeto[];
   nomeCartao: (id: string) => string;
+  /** Ex: "2026-07" ou "Todos os meses" - mostrado no cabeçalho da tela cheia. */
+  subtitulo?: string;
 }) {
+  const [telaCheia, setTelaCheia] = useState(false);
+
+  // Esc fecha a tela cheia, e enquanto ela está aberta o fundo não rola.
+  useEffect(() => {
+    if (!telaCheia) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setTelaCheia(false);
+    };
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', aoTeclar);
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      window.removeEventListener('keydown', aoTeclar);
+    };
+  }, [telaCheia]);
+
   const total = lancamentos.reduce((s, l) => s + l.valorCentavos, 0);
 
-  return (
-    <div>
-      <h3 className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
-        Lançamentos ({lancamentos.length})
-      </h3>
-
+  const conteudo = (
+    <>
       {/* Desktop: planilha */}
       <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block dark:border-slate-800 dark:bg-slate-900">
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="bg-slate-100 text-left dark:bg-slate-800">
+            <tr
+              className={`bg-slate-100 text-left dark:bg-slate-800 ${
+                // Em tela cheia a área de rolagem é o próprio painel, então o
+                // cabeçalho pode grudar no topo sem brigar com o header do app.
+                telaCheia ? 'sticky top-0 z-10' : ''
+              }`}
+            >
               <th className="whitespace-nowrap px-2 py-2 font-semibold">Data</th>
               <th className="whitespace-nowrap px-2 py-2 font-semibold">Cartão</th>
               <th className="px-2 py-2 font-semibold">Estabelecimento</th>
@@ -212,6 +234,40 @@ export function LancamentosDoMes({
           </Card>
         )}
       </div>
+    </>
+  );
+
+  if (telaCheia) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 dark:bg-slate-950">
+        <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+          <div>
+            <p className="text-sm font-semibold">Lançamentos ({lancamentos.length})</p>
+            {subtitulo && <p className="text-xs text-slate-500 dark:text-slate-400">{subtitulo}</p>}
+          </div>
+          <Button variant="secondary" onClick={() => setTelaCheia(false)}>
+            Fechar
+          </Button>
+        </header>
+        <div className="flex-1 overflow-auto p-4">{conteudo}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+          Lançamentos ({lancamentos.length})
+        </h3>
+        <button
+          className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 active:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:active:bg-slate-800"
+          onClick={() => setTelaCheia(true)}
+        >
+          ⛶ Tela cheia
+        </button>
+      </div>
+      {conteudo}
     </div>
   );
 }

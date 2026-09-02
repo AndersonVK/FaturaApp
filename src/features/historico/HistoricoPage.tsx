@@ -224,6 +224,7 @@ export function HistoricoPage() {
           pessoas={pessoas ?? []}
           projetos={projetos ?? []}
           nomeCartao={nomeCartao}
+          subtitulo={mesSelecionado === 'todos' ? 'Todos os meses' : mesSelecionado}
         />
       )}
     </div>
