@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 const itensNav = [
   { to: '/lancar', label: 'Lançar', icon: '➕' },
@@ -8,6 +8,12 @@ const itensNav = [
 ];
 
 export function AppShell() {
+  const { pathname } = useLocation();
+  // O Histórico mostra os lançamentos em formato de planilha no desktop e
+  // precisa de mais largura; as demais telas são formulários e listas, que
+  // ficam melhores estreitas.
+  const larguraMaxima = pathname.startsWith('/historico') ? 'max-w-6xl' : 'max-w-2xl';
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
@@ -15,7 +21,7 @@ export function AppShell() {
       </header>
 
       <main className="flex-1 overflow-y-auto pb-20">
-        <div className="mx-auto w-full max-w-2xl px-4 py-4">
+        <div className={`mx-auto w-full ${larguraMaxima} px-4 py-4`}>
           <Outlet />
         </div>
       </main>

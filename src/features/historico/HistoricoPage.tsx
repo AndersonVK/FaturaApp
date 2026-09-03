@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
+import { ordenarPorNome } from '../../lib/ordenar';
 import { Button, Card, EmptyState, Select, TextInput } from '../../components/ui';
 import { formatCentavos } from '../../lib/money';
+import { LancamentosDoMes } from './LancamentosDoMes';
 
 function baixarCSV(nomeArquivo: string, linhas: string[][]) {
   const conteudo = linhas
@@ -23,8 +25,8 @@ export function HistoricoPage() {
     [],
   );
   const contas = useLiveQuery(() => db.contas.toArray(), []);
-  const pessoas = useLiveQuery(() => db.pessoas.toArray(), []);
-  const projetos = useLiveQuery(() => db.projetos.toArray(), []);
+  const pessoas = useLiveQuery(() => db.pessoas.toArray().then(ordenarPorNome), []);
+  const projetos = useLiveQuery(() => db.projetos.toArray().then(ordenarPorNome), []);
   const cartoes = useLiveQuery(() => db.cartoes.toArray(), []);
 
   const meses = useMemo(() => [...new Set(faturas?.map((f) => f.mesReferencia))], [faturas]);
@@ -49,6 +51,16 @@ export function HistoricoPage() {
     if (idsFaturasFiltradas.length === 0) return [];
     return db.lancamentosFatura.where('faturaId').anyOf(idsFaturasFiltradas).toArray();
   }, [idsFaturasFiltradas]);
+
+  const lancamentosOrdenados = useMemo(
+    () =>
+      [...(lancamentos ?? [])].sort(
+        (a, b) =>
+          a.data.localeCompare(b.data) ||
+          a.estabelecimentoOriginal.localeCompare(b.estabelecimentoOriginal, 'pt-BR'),
+      ),
+    [lancamentos],
+  );
 
   function nomePessoa(id?: string) {
     if (!id) return 'Sem pessoa';
@@ -140,33 +152,35 @@ export function HistoricoPage() {
 
       {faturasFiltradas.length === 0 && <EmptyState>Nenhuma fatura importada ainda.</EmptyState>}
 
-      {totaisPorPessoa.length > 0 && (
-        <Card>
-          <h3 className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">Total por pessoa</h3>
-          <div className="flex flex-col gap-1">
-            {totaisPorPessoa.map(([pessoaId, total]) => (
-              <div key={pessoaId} className="flex justify-between text-sm">
-                <span>{pessoaId === '__sem_pessoa__' ? 'Sem pessoa' : nomePessoa(pessoaId)}</span>
-                <span className="font-medium">{formatCentavos(total)}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      <div className="grid gap-4 md:grid-cols-2">
+        {totaisPorPessoa.length > 0 && (
+          <Card>
+            <h3 className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">Total por pessoa</h3>
+            <div className="flex flex-col gap-1">
+              {totaisPorPessoa.map(([pessoaId, total]) => (
+                <div key={pessoaId} className="flex justify-between gap-4 text-sm">
+                  <span>{pessoaId === '__sem_pessoa__' ? 'Sem pessoa' : nomePessoa(pessoaId)}</span>
+                  <span className="font-medium tabular-nums">{formatCentavos(total)}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
-      {totaisPorProjeto.length > 0 && (
-        <Card>
-          <h3 className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">Total por projeto</h3>
-          <div className="flex flex-col gap-1">
-            {totaisPorProjeto.map(([projetoId, total]) => (
-              <div key={projetoId} className="flex justify-between text-sm">
-                <span>{projetoId === '__sem_projeto__' ? 'Sem projeto' : nomeProjeto(projetoId)}</span>
-                <span className="font-medium">{formatCentavos(total)}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+        {totaisPorProjeto.length > 0 && (
+          <Card>
+            <h3 className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">Total por projeto</h3>
+            <div className="flex flex-col gap-1">
+              {totaisPorProjeto.map(([projetoId, total]) => (
+                <div key={projetoId} className="flex justify-between gap-4 text-sm">
+                  <span>{projetoId === '__sem_projeto__' ? 'Sem projeto' : nomeProjeto(projetoId)}</span>
+                  <span className="font-medium tabular-nums">{formatCentavos(total)}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         {faturasFiltradas.map((fatura) => (
@@ -203,6 +217,16 @@ export function HistoricoPage() {
           </Card>
         ))}
       </div>
+
+      {lancamentosOrdenados.length > 0 && (
+        <LancamentosDoMes
+          lancamentos={lancamentosOrdenados}
+          pessoas={pessoas ?? []}
+          projetos={projetos ?? []}
+          nomeCartao={nomeCartao}
+          subtitulo={mesSelecionado === 'todos' ? 'Todos os meses' : mesSelecionado}
+        />
+      )}
     </div>
   );
 }
